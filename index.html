@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Scheduler with deadlines</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .job-entry, .results {
+      margin: 20px auto;
+      max-width: 800px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .schedule-grid {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+    .time-slot {
+      width: 60px;
+      height: 60px;
+      border: 2px dashed #aaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #f0f0f0;
+    }
+    .task-box {
+      padding: 8px 10px;
+      background: #4caf50;
+      color: white;
+      border-radius: 6px;
+      margin: 5px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    .btn {
+      padding: 10px 20px;
+      margin-top: 10px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #0b7dda;
+    }
+  </style>
+</head>
+<body>
+  <h1>Job Scheduling with Deadlines</h1>
+
+  <div class="job-entry">
+    <h3>Add Job</h3>
+    <label>Job ID: <input type="text" id="jobId" /></label>
+    <label>Profit: <input type="number" id="profit" /></label>
+    <label>Deadline: <input type="number" id="deadline" /></label>
+    <button class="btn" onclick="addJob()">Insert Job</button>
+    <button class="btn" onclick="loadJobs()">Load Sample</button>
+    <table id="jobTable">
+      <thead>
+        <tr><th>Job ID</th><th>Profit</th><th>Deadline</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button class="btn" onclick="scheduleJobs()">Start Scheduling</button>
+  </div>
+
+  <div class="results">
+    <h3>Optimized Schedule</h3>
+    <div class="schedule-grid" id="schedule"></div>
+    <h4>Total Profit: <span id="totalProfit">0</span></h4>
+  </div>
+
+  <script>
+    let jobs = [];
+
+    function addJob() {
+      const id = document.getElementById("jobId").value;
+      const profit = parseInt(document.getElementById("profit").value);
+      const deadline = parseInt(document.getElementById("deadline").value);
+      if (!id || isNaN(profit) || isNaN(deadline)) return alert("Please complete all fields.");
+      jobs.push({ id, profit, deadline });
+      updateJobTable();
+    }
+
+    function loadJobs() {
+      jobs = [
+        { id: 'J1', profit: 35, deadline: 3 },
+        { id: 'J2', profit: 30, deadline: 4 },
+        { id: 'J3', profit: 25, deadline: 4 },
+        { id: 'J4', profit: 20, deadline: 2 },
+        { id: 'J5', profit: 15, deadline: 3 },
+        { id: 'J6', profit: 12, deadline: 1 },
+        { id: 'J7', profit: 5, deadline: 2 }
+      ];
+      updateJobTable();
+    }
+
+    function updateJobTable() {
+      const tbody = document.querySelector("#jobTable tbody");
+      tbody.innerHTML = "";
+      jobs.forEach(job => {
+        const row = `<tr><td>${job.id}</td><td>${job.profit}</td><td>${job.deadline}</td></tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function scheduleJobs() {
+      const maxDeadline = Math.max(...jobs.map(job => job.deadline));
+      const timeSlots = Array(maxDeadline).fill(null);
+      let totalProfit = 0;
+
+      const sortedJobs = [...jobs].sort((a, b) => b.profit - a.profit);
+
+      sortedJobs.forEach(job => {
+        for (let i = job.deadline - 1; i >= 0; i--) {
+          if (!timeSlots[i]) {
+            timeSlots[i] = job;
+            totalProfit += job.profit;
+            break;
+          }
+        }
+      });
+
+      const schedule = document.getElementById("schedule");
+      schedule.innerHTML = "";
+      timeSlots.forEach((job, i) => {
+        const box = document.createElement("div");
+        box.className = "time-slot";
+        box.innerHTML = job ? `<div class='task-box'>${job.id}</div>` : "-";
+        schedule.appendChild(box);
+      });
+      document.getElementById("totalProfit").innerText = totalProfit;
+    }
+  </script>
+</body>
+</html>
