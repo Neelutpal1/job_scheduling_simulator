@@ -3,109 +3,138 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Job Scheduler with deadlines</title>
+  <title>Deadline Job Scheduler</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      background: #1e1e2f;
+      color: #fff;
       padding: 20px;
     }
     h1 {
       text-align: center;
+      margin-bottom: 30px;
     }
     .job-entry, .results {
       margin: 20px auto;
-      max-width: 800px;
-      background: #fff;
+      max-width: 900px;
+      background: #2a2a40;
       padding: 20px;
       border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
     }
     .schedule-grid {
       display: flex;
-      justify-content: space-around;
+      justify-content: space-between;
+      flex-wrap: wrap;
       margin-top: 20px;
     }
     .time-slot {
       width: 60px;
       height: 60px;
-      border: 2px dashed #aaa;
+      border: 2px dashed #888;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 10px;
-      background: #f0f0f0;
+      background: #444;
+      color: #fff;
+      transition: transform 0.3s ease, background-color 0.3s ease;
+      margin: 5px;
     }
     .task-box {
       padding: 8px 10px;
       background: #4caf50;
       color: white;
       border-radius: 6px;
-      margin: 5px 0;
+      animation: pop 0.6s ease;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
+      color: #fff;
     }
     th, td {
       padding: 8px;
-      border: 1px solid #ddd;
+      border: 1px solid #555;
       text-align: center;
     }
     .btn {
       padding: 10px 20px;
       margin-top: 10px;
-      background: #2196f3;
+      background: #00adb5;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
     }
     .btn:hover {
-      background: #0b7dda;
+      background: #0098a0;
+    }
+    input {
+      margin: 5px;
+      padding: 5px;
+      border-radius: 4px;
+      border: 1px solid #666;
+      background: #333;
+      color: #fff;
+    }
+    .log-output {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #1f1f2e;
+      border-radius: 8px;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #ccc;
     }
   </style>
 </head>
 <body>
-  <h1>Job Scheduling with Deadlines</h1>
+  <h1>Deadline Job Scheduler</h1>
 
   <div class="job-entry">
     <h3>Add Job</h3>
     <label>Job ID: <input type="text" id="jobId" /></label>
     <label>Profit: <input type="number" id="profit" /></label>
     <label>Deadline: <input type="number" id="deadline" /></label>
-    <button class="btn" onclick="addJob()">Insert Job</button>
-    <button class="btn" onclick="loadJobs()">Load Sample</button>
+    <button class="btn" onclick="handleAddJob()">Insert Job</button>
+    <button class="btn" onclick="handleLoadSampleJobs()">Load Sample</button>
     <table id="jobTable">
       <thead>
         <tr><th>Job ID</th><th>Profit</th><th>Deadline</th></tr>
       </thead>
       <tbody></tbody>
     </table>
-    <button class="btn" onclick="scheduleJobs()">Start Scheduling</button>
+    <button class="btn" onclick="handleStartScheduling()">Start Scheduling</button>
   </div>
 
   <div class="results">
     <h3>Optimized Schedule</h3>
     <div class="schedule-grid" id="schedule"></div>
     <h4>Total Profit: <span id="totalProfit">0</span></h4>
+    <div id="log" class="log-output"></div>
   </div>
 
   <script>
-    let jobs = [];
+    let jobList = [];
 
-    function addJob() {
+    function handleAddJob() {
       const id = document.getElementById("jobId").value;
       const profit = parseInt(document.getElementById("profit").value);
       const deadline = parseInt(document.getElementById("deadline").value);
       if (!id || isNaN(profit) || isNaN(deadline)) return alert("Please complete all fields.");
-      jobs.push({ id, profit, deadline });
-      updateJobTable();
+      jobList.push({ id, profit, deadline });
+      renderJobTable();
     }
 
-    function loadJobs() {
-      jobs = [
+    function handleLoadSampleJobs() {
+      jobList = [
         { id: 'J1', profit: 35, deadline: 3 },
         { id: 'J2', profit: 30, deadline: 4 },
         { id: 'J3', profit: 25, deadline: 4 },
@@ -114,43 +143,58 @@
         { id: 'J6', profit: 12, deadline: 1 },
         { id: 'J7', profit: 5, deadline: 2 }
       ];
-      updateJobTable();
+      renderJobTable();
     }
 
-    function updateJobTable() {
+    function renderJobTable() {
       const tbody = document.querySelector("#jobTable tbody");
       tbody.innerHTML = "";
-      jobs.forEach(job => {
+      jobList.forEach(job => {
         const row = `<tr><td>${job.id}</td><td>${job.profit}</td><td>${job.deadline}</td></tr>`;
         tbody.innerHTML += row;
       });
     }
 
-    function scheduleJobs() {
-      const maxDeadline = Math.max(...jobs.map(job => job.deadline));
+    async function handleStartScheduling() {
+      const maxDeadline = Math.max(...jobList.map(job => job.deadline));
       const timeSlots = Array(maxDeadline).fill(null);
       let totalProfit = 0;
+      const logOutput = document.getElementById("log");
+      logOutput.innerHTML = "";
 
-      const sortedJobs = [...jobs].sort((a, b) => b.profit - a.profit);
+      const sortedJobs = [...jobList].sort((a, b) => b.profit - a.profit);
 
-      sortedJobs.forEach(job => {
+      const schedule = document.getElementById("schedule");
+      schedule.innerHTML = "";
+
+      for (let i = 0; i < maxDeadline; i++) {
+        const box = document.createElement("div");
+        box.className = "time-slot";
+        box.innerHTML = "-";
+        schedule.appendChild(box);
+      }
+
+      for (let j = 0; j < sortedJobs.length; j++) {
+        const job = sortedJobs[j];
+        let scheduled = false;
         for (let i = job.deadline - 1; i >= 0; i--) {
           if (!timeSlots[i]) {
             timeSlots[i] = job;
             totalProfit += job.profit;
+            const slot = schedule.children[i];
+            await new Promise(res => setTimeout(res, 1200));
+            slot.innerHTML = `<div class='task-box'>${job.id}</div>`;
+            slot.style.backgroundColor = "#2e7d32";
+            logOutput.innerHTML += `<div>${job.id} scheduled at ${i + 1}</div>`;
+            scheduled = true;
             break;
           }
         }
-      });
+        if (!scheduled) {
+          logOutput.innerHTML += `<div>${job.id} no slot available</div>`;
+        }
+      }
 
-      const schedule = document.getElementById("schedule");
-      schedule.innerHTML = "";
-      timeSlots.forEach((job, i) => {
-        const box = document.createElement("div");
-        box.className = "time-slot";
-        box.innerHTML = job ? `<div class='task-box'>${job.id}</div>` : "-";
-        schedule.appendChild(box);
-      });
       document.getElementById("totalProfit").innerText = totalProfit;
     }
   </script>
